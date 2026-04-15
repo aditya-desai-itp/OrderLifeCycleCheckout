@@ -6,5 +6,5 @@ export const generateCartChecksum = (cart : CartItem[]): string => {
 };
 
 export const generateIdempotencyKey = ():string => {
-  return 'idk_' + Math.random().toString(36).substr(2, 9) + Date.now();
+  return 'idk_' + Math.random().toString(36).substring(2, 11) + Date.now();
 };
