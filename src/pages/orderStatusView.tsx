@@ -8,27 +8,41 @@ export const OrderStatusView: React.FC = () => {
   const { state, dispatch, notify } = useAppStore();
 
   // Simulated Transit Lifecycle (Requirement Implementation)
+  // useEffect(() => {
+  //   let timer: number;
+  //   if (state.orderState === ORDER_STATES.ORDER_SUCCESS) 
+  //   {
+  //       timer = setTimeout(() => {
+  //       dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_SHIPPED });
+  //       notify("Order has been shipped!", "info");
+  //       }, 2000);
+  //       } else if (state.orderState === ORDER_STATES.ORDER_SHIPPED) {
+  //           timer = setTimeout(() => {
+  //           dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_IN_TRANSIT });
+  //           notify("Order is out for delivery.", "info");
+  //           }, 4000);
+  //       } else if (state.orderState === ORDER_STATES.ORDER_IN_TRANSIT) {
+  //           timer = setTimeout(() => {
+  //           dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_DELIVERED });
+  //           notify("Order Delivered Successfully!", "success");
+  //           }, 6000);
+  //           return () => { clearTimeout(timer); };
+  //   }
+  //   }, [state.orderState, dispatch, notify]);
   useEffect(() => {
-    let timer: number;
-    if (state.orderState === ORDER_STATES.ORDER_SUCCESS) 
-    {
-        timer = setTimeout(() => {
-        dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_SHIPPED });
-        notify("Order has been shipped!", "info");
-        }, 2000);
-        } else if (state.orderState === ORDER_STATES.ORDER_SHIPPED) {
-            timer = setTimeout(() => {
-            dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_IN_TRANSIT });
-            notify("Order is out for delivery.", "info");
-            }, 4000);
-        } else if (state.orderState === ORDER_STATES.ORDER_IN_TRANSIT) {
-            timer = setTimeout(() => {
-            dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_DELIVERED });
-            notify("Order Delivered Successfully!", "success");
-            }, 6000);
-            return () => { clearTimeout(timer); };
+    if (state.orderState === ORDER_STATES.ORDER_SUCCESS) {
+      const t = setTimeout(() => { dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_SHIPPED }); notify("Order has been shipped!", "info"); }, 3000);
+      return () => clearTimeout(t);
     }
-    }, [state.orderState, dispatch, notify]);
+    if (state.orderState === ORDER_STATES.ORDER_SHIPPED) {
+      const t = setTimeout(() => { dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_IN_TRANSIT }); notify("Order is out for delivery.", "info"); }, 3000);
+      return () => clearTimeout(t);
+    }
+    if (state.orderState === ORDER_STATES.ORDER_IN_TRANSIT) {
+      const t = setTimeout(() => { dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_DELIVERED }); notify("Order Delivered Successfully!", "success"); }, 3000);
+      return () => clearTimeout(t);
+    }
+  }, [state.orderState, dispatch, notify]);
 
   const timelineSteps = [
     { key: ORDER_STATES.ORDER_SUCCESS, label: "Order Placed", icon: "📦" },

@@ -3,6 +3,7 @@ import { useAppStore } from '../hooks/useAppStore';
 import { useDebounce } from '../hooks/useDebounce';
 import { Button } from '../components/buttons';
 import type { SortOption } from '../types/types';   
+import { VirtualGrid } from '../components/virtGrid';
 
 export const CatalogView: React.FC = () => {
   const { state, dispatch, notify } = useAppStore();
@@ -91,45 +92,47 @@ export const CatalogView: React.FC = () => {
       ) : currentProducts.length === 0 ? (
         <div className="text-center py-12 text-slate-500 dark:text-slate-400">No products match your search/filters.</div>
       ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-            {currentProducts.map(product => {
-              const cartItem = state.cart.find(i => i.id === product.id);
-              return (
-                <div key={product.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
-                  <div className="h-48 bg-slate-50 dark:bg-slate-900 p-4 flex justify-center items-center">
-                    <img src={product.image} alt={product.title} className="h-full object-contain mix-blend-multiply dark:mix-blend-normal" loading="lazy" />
-                  </div>
-                  <div className="p-4 flex flex-col flex-grow">
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-50 line-clamp-2 mb-1">{product.title}</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 capitalize">{product.category}</p>
-                    <div className="mt-auto flex justify-between items-center">
-                      <span className="text-lg font-bold text-blue-600 dark:text-blue-400">${product.price.toFixed(2)}</span>
-                      {cartItem ? (
-                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
-                          <button disabled={state.isCheckoutLocked} onClick={() => dispatch({ type: 'UPDATE_CART_QTY', payload: { id: product.id, qty: cartItem.qty - 1 } })} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-600 rounded text-slate-700 dark:text-white shadow-sm hover:bg-slate-50 disabled:opacity-50">-</button>
-                          <span className="text-sm font-medium w-6 text-center text-slate-900 dark:text-white">{cartItem.qty}</span>
-                          <button disabled={state.isCheckoutLocked} onClick={() => { dispatch({ type: 'UPDATE_CART_QTY', payload: { id: product.id, qty: cartItem.qty + 1 } }); notify(`Added ${product.title}`, 'success'); }} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-600 rounded text-slate-700 dark:text-white shadow-sm hover:bg-slate-50 disabled:opacity-50">+</button>
-                        </div>
-                      ) : (
-                        <Button disabled={state.isCheckoutLocked} onClick={() => { dispatch({ type: 'ADD_TO_CART', payload: product }); notify(`Added ${product.title}`, 'success'); }} variant="accent" className="py-1.5 px-4 text-sm">
-                          Add to Cart
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        // <>
+        //   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+        //     {currentProducts.map(product => {
+        //       const cartItem = state.cart.find(i => i.id === product.id);
+        //       return (
+        //         <div key={product.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+        //           <div className="h-48 bg-slate-50 dark:bg-slate-900 p-4 flex justify-center items-center">
+        //             <img src={product.image} alt={product.title} className="h-full object-contain mix-blend-multiply dark:mix-blend-normal" loading="lazy" />
+        //           </div>
+        //           <div className="p-4 flex flex-col flex-grow">
+        //             <h3 className="font-semibold text-slate-900 dark:text-slate-50 line-clamp-2 mb-1">{product.title}</h3>
+        //             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 capitalize">{product.category}</p>
+        //             <div className="mt-auto flex justify-between items-center">
+        //               <span className="text-lg font-bold text-blue-600 dark:text-blue-400">${product.price.toFixed(2)}</span>
+        //               {cartItem ? (
+        //                 <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+        //                   <button disabled={state.isCheckoutLocked || state.isPaymentPageActive} onClick={() =>{if(state.isCheckoutLocked || state.isPaymentPageActive){return;} dispatch({ type: 'UPDATE_CART_QTY', payload: { id: product.id, qty: cartItem.qty - 1 } })}} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-600 rounded text-slate-700 dark:text-white shadow-sm hover:bg-slate-50 disabled:opacity-50">-</button>
+        //                   <span className="text-sm font-medium w-6 text-center text-slate-900 dark:text-white">{cartItem.qty}</span>
+        //                   <button disabled={state.isCheckoutLocked || state.isPaymentPageActive} onClick={() => {if(state.isCheckoutLocked || state.isPaymentPageActive){return;} dispatch({ type: 'UPDATE_CART_QTY', payload: { id: product.id, qty: cartItem.qty + 1 } }); notify(`Added ${product.title}`, 'success'); }} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-600 rounded text-slate-700 dark:text-white shadow-sm hover:bg-slate-50 disabled:opacity-50">+</button>
+        //                 </div>
+        //               ) : (
+        //                 <Button disabled={state.isCheckoutLocked || state.isPaymentPageActive} onClick={() => { if(state.isCheckoutLocked || state.isPaymentPageActive){return;} dispatch({ type: 'ADD_TO_CART', payload: product }); notify(`Added ${product.title}`, 'success'); }} variant="accent" className="py-1.5 px-4 text-sm">
+        //                   Add to Cart
+        //                 </Button>
+        //               )}
+        //             </div>
+        //           </div>
+        //         </div>
+        //       );
+        //     })}
+        //   </div>
           
-          {/* Intersection Observer Target for Lazy Loading */}
-          {visibleCount < processedProducts.length && (
-            <div ref={loaderRef} className="py-4 flex justify-center items-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          )}
-        </>
+          
+        //   {/* Intersection Observer Target for Lazy Loading */}
+        //   {visibleCount < processedProducts.length && (
+        //     <div ref={loaderRef} className="py-4 flex justify-center items-center">
+        //       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        //     </div>
+        //   )}
+        // </>
+        <VirtualGrid items={processedProducts} cardHeight={320} />
       )}
     </div>
   );

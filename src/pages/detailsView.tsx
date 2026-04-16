@@ -9,6 +9,7 @@ export const DetailsView: React.FC = () => {
   
   // FIX: Isolated Local State for Form to prevent Cross-Tab Flickering!
   const [d, setD] = useState<CheckoutDetails>(state.checkoutDetails);
+  const isActionDisabled = state.isCheckoutLocked || state.sharedPaymentActive;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +28,7 @@ export const DetailsView: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 space-y-4">
-        <fieldset disabled={state.isCheckoutLocked}>
+        <fieldset disabled={isActionDisabled}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
@@ -55,7 +56,7 @@ export const DetailsView: React.FC = () => {
         </fieldset>
         
         <div className="pt-4 mt-6 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-          <Button disabled={state.isCheckoutLocked} type="submit" variant="primary" className="w-full sm:w-auto py-3 px-8">Proceed to Payment</Button>
+          <Button disabled={isActionDisabled} type="submit" variant="primary" className="w-full sm:w-auto py-3 px-8">Proceed to Payment</Button>
         </div>
       </form>
     </div>
