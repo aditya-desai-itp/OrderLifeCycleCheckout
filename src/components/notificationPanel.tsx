@@ -18,7 +18,7 @@ export const NotificationPanel: React.FC = () => {
       )}
       
       {/* Sidebar Panel */}
-      <div className={`fixed top-0 right-0 h-full w-full sm:w-96 bg-white dark:bg-slate-800 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l border-slate-200 dark:border-slate-700 flex flex-col ${state.isNotificationPanelOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-0 right-0 h-full w-full sm:w-96 bg-white dark:bg-slate-800 shadow-2xl z-60 transform transition-transform duration-300 ease-in-out border-l border-slate-200 dark:border-slate-700 flex flex-col ${state.isNotificationPanelOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50 flex items-center gap-2">
             <Icons.Bell className="w-5 h-5 text-blue-600" /> Notifications
@@ -48,10 +48,10 @@ export const NotificationPanel: React.FC = () => {
                 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50 text-blue-800 dark:text-blue-300'
               }`}>
                 {note.type === 'success' ? <Icons.Check className="w-5 h-5 flex-shrink-0 mt-0.5"/> : <Icons.Alert className="w-5 h-5 flex-shrink-0 mt-0.5" />}
-                <div>
-                  <p className="text-sm font-medium leading-tight">{note.message}</p>
-                  <p className="text-xs opacity-70 mt-1">{new Date(note.timestamp).toLocaleTimeString()}</p>
-                </div>
+                <div key={idx} className="p-3 border rounded text-sm text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+               {note.count > 1 && <span className="font-bold bg-slate-200 dark:bg-slate-700 px-1.5 rounded mr-2">{note.count}x</span>}
+               {note.message} <span className="text-xs text-slate-500 block mt-1">{new Date(note.timestamp).toLocaleTimeString()}</span>
+             </div>
               </div>
             ))
           )}

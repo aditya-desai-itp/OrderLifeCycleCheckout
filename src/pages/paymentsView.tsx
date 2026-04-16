@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAppStore } from '../hooks/useAppStore';
 import { Button } from '../components/buttons';
 import { Icons } from '../components/icons';
 import { generateCartChecksum, generateIdempotencyKey } from '../utilities/checksum';
 import { ORDER_STATES } from '../types/types';
+import { Logger } from '../utilities/Logger';
 
 
 export const PaymentView: React.FC = () => {
@@ -11,23 +12,63 @@ export const PaymentView: React.FC = () => {
   const [method, setMethod] = useState<'card' | 'upi'>('card');
   const [upiId, setUpiId] = useState('');
   const [card, setCard] = useState({ num: '', exp: '', cvv: '' });
+  const [isValidating, setIsValidating] = useState(false);
+  
+  useEffect(() => {
+    dispatch({ type: 'SET_SHARED_PAYMENT_ACTIVE', payload: true });
+    
+    // Safety cleanup: If user closes this tab, lift the lock for other tabs
+    const handleUnload = () => {
+      const savedStr = localStorage.getItem('checkout_app_state');
+      if (savedStr) {
+        const parsed = JSON.parse(savedStr);
+        parsed.sharedPaymentActive = false;
+        localStorage.setItem('checkout_app_state', JSON.stringify(parsed));
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+
+    return () => {
+      dispatch({ type: 'SET_SHARED_PAYMENT_ACTIVE', payload: false });
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!state.checkoutToken && state.currentView === 'payment') {
+      dispatch({ type: 'GENERATE_CHECKOUT_TOKEN' });
+    }
+  }, [state.checkoutToken, state.currentView, dispatch]);
+
+  
 
   const totals = useMemo(() => {
     const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     return { total: (subtotal * 1.1).toFixed(2) };
   }, [state.cart]);
 
-  const handlePay = () => {
+  const handlePay = async () => {
 
     if (state.isCheckoutLocked) return; 
     if (method === 'card' && (!card.num || !card.exp || !card.cvv)) { notify("Please fill card details", "error"); return; }
     if (method === 'upi' && !upiId) { notify("Please enter UPI ID", "error"); return; }
 
     dispatch({ type: 'LOCK_CHECKOUT', payload: true });
+    setIsValidating(true);
+    Logger.log('INFO', 'Payment initiated. Locking UI globally.');
 
+     // --- ARTIFICIAL DELAY FOR TAB LOCK VERIFICATION ---
+    
+    
+    if (!state.checkoutToken) {
+      notify("Session token expired. Please refresh the page.", "error");
+      dispatch({ type: 'LOCK_CHECKOUT', payload: false });
+      setIsValidating(false);
+      return;
+    }
     // 1. Validation (Checksum Tamper Check)
     const currentHash = generateCartChecksum(state.cart);
-    
+
     // 2. Level 2 Deep Validation: Cross-verify with source-of-truth Catalog
     // (This stops DevTools users who tampered price AND recalculated the hash manually)
     let isTampered = false;
@@ -37,6 +78,7 @@ export const PaymentView: React.FC = () => {
     });
 
     if (currentHash !== state.cartHash || isTampered) {
+      Logger.log('SEC_AUDIT', 'Tampering detected at final submission boundary.');
       notify("Security Alert: Cart tampering detected! Price mismatch.", "error");
       
       // Auto-trigger conflict resolution internally
@@ -47,6 +89,8 @@ export const PaymentView: React.FC = () => {
 
       dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.CART_READY });
       dispatch({ type: 'SET_CART_CONFLICT', payload: { items: correctedCart } });
+      
+      setIsValidating(false);
       return; 
     }
 
@@ -56,6 +100,7 @@ export const PaymentView: React.FC = () => {
     dispatch({ type: 'SET_IDEMPOTENCY_KEY', payload: idKey });
     dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.CHECKOUT_VALIDATED });
     dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_SUBMITTED });
+    dispatch({ type: 'CONSUME_CHECKOUT_TOKEN' });
     simulateOrderSubmission(idKey);
     }
     
@@ -66,7 +111,7 @@ const simulateOrderSubmission = async (idempotencyKey:string) => {
 
       const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey },
+        headers: { 'Content-Type': 'application/json', 'X-Idempotency-Key': idempotencyKey, 'X-Checkout-Token': state.checkoutToken as string },
         body: JSON.stringify({ cart: state.cart, total: totals.total, customer: state.checkoutDetails })
       });
 
@@ -97,10 +142,14 @@ const simulateOrderSubmission = async (idempotencyKey:string) => {
     }
   }
  catch (error) {
+      Logger.log('ERROR', 'API Submission failed.');
       dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_FAILED });
       notify("Order failed. Please retry.", "error");
+      dispatch({ type: 'GENERATE_CHECKOUT_TOKEN' }); 
+      setIsValidating(false);
     } finally {
       dispatch({ type: 'LOCK_CHECKOUT', payload: false });
+      setIsValidating(false);
     }
 };
 
@@ -143,7 +192,11 @@ const simulateOrderSubmission = async (idempotencyKey:string) => {
             <span>${totals.total}</span>
           </div>
           <Button onClick={handlePay} disabled={state.isCheckoutLocked} variant="accent" className="w-full py-4 text-lg shadow-lg shadow-orange-500/30">
-            {state.isCheckoutLocked ? 'Processing...' : `Pay $${totals.total}`}
+            {isValidating ? (
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Validating Security...
+              </div>
+            ) : state.isCheckoutLocked ? 'Processing...' : `Pay $${totals.total}`}
           </Button>
           {state.orderState === ORDER_STATES.ORDER_INCONSISTENT && (
             <p className="text-red-500 text-sm mt-4 text-center">Payment failed. Please try again.</p>

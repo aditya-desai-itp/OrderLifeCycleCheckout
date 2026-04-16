@@ -8,3 +8,13 @@ export const generateCartChecksum = (cart : CartItem[]): string => {
 export const generateIdempotencyKey = ():string => {
   return 'idk_' + Math.random().toString(36).substring(2, 11) + Date.now();
 };
+
+export const generateSecureToken = (): string => {
+  return 'tok_' + crypto.randomUUID?.() || ('tok_' + Math.random().toString(36).substring(2));
+};
+
+export const deterministicRandom = (seedStr: string): number => {
+  let hash = 0;
+  for (let i = 0; i < seedStr.length; i++) hash = Math.imul(31, hash) + seedStr.charCodeAt(i) | 0;
+  return (Math.abs(hash) % 50) + 10; // Stable random number between 10 and 60
+};

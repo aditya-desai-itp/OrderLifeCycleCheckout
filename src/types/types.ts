@@ -20,7 +20,7 @@ export const VALID_TRANSITIONS: Record<OrderState, OrderState[]> = {
   [ORDER_STATES.ORDER_IN_TRANSIT]: [ORDER_STATES.ORDER_DELIVERED, ORDER_STATES.CART_READY],
   [ORDER_STATES.ORDER_DELIVERED]: [ORDER_STATES.CART_READY],
   [ORDER_STATES.ORDER_FAILED]: [ORDER_STATES.CART_READY, ORDER_STATES.ROLLED_BACK, ORDER_STATES.ORDER_SUBMITTED],
-  [ORDER_STATES.ORDER_INCONSISTENT]: [ORDER_STATES.CART_READY, ORDER_STATES.ROLLED_BACK],
+  [ORDER_STATES.ORDER_INCONSISTENT]: [ORDER_STATES.CART_READY, ORDER_STATES.ROLLED_BACK, ORDER_STATES.CHECKOUT_VALIDATED],
   [ORDER_STATES.ROLLED_BACK]: [ORDER_STATES.CART_READY],
 };
 
@@ -63,7 +63,10 @@ export interface AppState {
   products: Product[];
   cart: CartItem[];
   cartHash: string;
+  cartVersion: number
   orderState: OrderState;
+  sharedPaymentActive: boolean;
+  lastUpdateSource: 'local' | 'sync';
   
   // Navigation & Form Data
   currentView: ViewState;
@@ -73,11 +76,13 @@ export interface AppState {
   selectedCategories: string[];
   sortOption: SortOption;
   isDarkMode: boolean;
+  // isPaymentPageActive: boolean;
   
   // System
   activeNotifications: NotificationMsg[];
   notificationHistory: NotificationMsg[];
   isNotificationPanelOpen: boolean;
+  checkoutToken: string | null;
   idempotencyKey: string | null;
   isCheckoutLocked: boolean;
   cartConflict: { items: CartItem[] } | null;
@@ -92,10 +97,12 @@ export type Action =
   | { type: 'UPDATE_CHECKOUT_DETAILS'; payload: Partial<CheckoutDetails> }
   | { type: 'ADD_TO_CART'; payload: Product }
   | { type: 'UPDATE_CART_QTY'; payload: { id: string | number; qty: number } }
-  | { type: 'CLEAR_CART' }
+  | { type: 'CLEAR_CART', payload?: 'catalog' | 'cart' | null }
   | { type: 'ORDER_COMPLETE_CLEAR' }
   | { type: 'TRANSITION_STATE'; payload: OrderState }
   | { type: 'LOCK_CHECKOUT'; payload: boolean }
+  | { type: 'GENERATE_CHECKOUT_TOKEN' }
+  | { type: 'CONSUME_CHECKOUT_TOKEN' }
   | { type: 'SET_IDEMPOTENCY_KEY'; payload: string }
   | { type: 'ADD_NOTIFICATION'; payload: NotificationMsg }
   | { type: 'REMOVE_ACTIVE_NOTIFICATION'; payload: string }
@@ -104,7 +111,9 @@ export type Action =
   | { type: 'SIMULATE_TAMPERING' }
   | { type: 'SET_CART_CONFLICT'; payload: { items: CartItem[] } | null }
   | { type: 'RESOLVE_CART_CONFLICT'; payload: CartItem[] }
-  | { type: 'HYDRATE_STATE'; payload: Partial<AppState> };
+  | { type: 'HYDRATE_STATE'; payload: Partial<AppState> }
+  | { type: 'SYNC_FROM_OTHER_TAB'; payload: Partial<AppState> }
+  | { type: 'SET_SHARED_PAYMENT_ACTIVE'; payload: boolean };
 
 export type SortOption = 'default' | 'price_asc' | 'price_desc' | 'name_asc' | 'name_desc';
 
