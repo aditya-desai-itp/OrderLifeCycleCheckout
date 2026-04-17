@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useAppStore } from '../hooks/useAppStore';
 import { useDebounce } from '../hooks/useDebounce';
-import { Button } from '../components/buttons';
 import type { SortOption } from '../types/types';   
 import { VirtualGrid } from '../components/virtGrid';
 
 export const CatalogView: React.FC = () => {
-  const { state, dispatch, notify } = useAppStore();
+  const { state, dispatch} = useAppStore();
   
   const [localSearch, setLocalSearch] = useState(state.searchQuery);
   const debouncedSearch = useDebounce(localSearch, 300);

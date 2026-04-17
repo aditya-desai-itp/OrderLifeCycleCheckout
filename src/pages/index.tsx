@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef} from 'react';
 import React from 'react';
 import { useAppStore } from '../hooks/useAppStore';
-import { deterministicRandom, generateCartChecksum, generateIdempotencyKey } from '../utilities/checksum';
+import { deterministicRandom, generateCartChecksum } from '../utilities/checksum';
 import type { AppState, Product } from '../types/types';
 import { CatalogView } from './catalogView';
 import { CartView } from './cartView';

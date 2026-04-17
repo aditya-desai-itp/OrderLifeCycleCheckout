@@ -5,7 +5,7 @@ import { Icons } from '../components/icons';
 import { VirtualCartList } from '../components/virtCart';
 
 export const CartView: React.FC = () => {
-  const { state, dispatch, notify } = useAppStore();
+  const { state, dispatch } = useAppStore();
   const totals = useMemo(() => {
     const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     return { subtotal, tax: subtotal * 0.1, total: subtotal * 1.1 };
