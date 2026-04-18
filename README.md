@@ -117,3 +117,7 @@ The application utilizes a robust observability strategy:
 * **Console Debugging & Breakpoints:** During development, React DevTools and Chrome debugger breakpoints were heavily utilized within the `useReducer` to track the `cartVersion` diffs during cross-tab synchronization.
 * **Data Transmission Observability:** Network payloads sent to the simulated `jsonplaceholder` API can be observed via the Network Tab, demonstrating the successful transmission of the generated `X-Checkout-Token`, cart payload, and derived totals.
 * **Log Exporting:** A "Copy Developer Logs" button in the footer extracts the structured JSON array of session logs to the clipboard, allowing developers to trace the exact State Machine flow leading up to an edge-case failure.
+
+## Video documenting the full application overview, explaining features and showcasing debugging of one key feature
+
+[Video Link](https://intuitivetp-my.sharepoint.com/:v:/g/personal/aditya_desai_intuitive_ai/IQB6WBioUuDPT5PRXsliZ7qZAZ_NGBx4PxBTEAz-tBe9kso?e=gv6SAG)
