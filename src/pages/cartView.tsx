@@ -5,7 +5,7 @@ import { Icons } from '../components/icons';
 import { VirtualCartList } from '../components/virtCart';
 
 export const CartView: React.FC = () => {
-  const { state, dispatch } = useAppStore();
+  const { state, dispatch, notify } = useAppStore();
   const totals = useMemo(() => {
     const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     return { subtotal, tax: subtotal * 0.1, total: subtotal * 1.1 };
@@ -15,10 +15,11 @@ export const CartView: React.FC = () => {
 
   if (state.cart.length === 0) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <Icons.Cart className="w-16 h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Your cart is empty</h2>
-        <Button onClick={() => dispatch({ type: 'SET_VIEW', payload: 'catalog' })}>Continue Shopping</Button>
+      <div className="max-w-3xl mx-auto px-4 py-24 text-center animate-fade-in">
+        <Icons.Cart className="w-20 h-20 mx-auto mb-6 text-neutral-300 dark:text-neutral-700" />
+        <h2 className="text-3xl font-serif font-bold text-neutral-900 dark:text-white mb-4">Your Bag is Empty</h2>
+        <p className="text-neutral-500 mb-8">Looks like you haven't made your choice yet.</p>
+        <Button onClick={() => dispatch({ type: 'SET_VIEW', payload: 'catalog' })}>Discover Things</Button>
       </div>
     );
   }
@@ -31,38 +32,17 @@ export const CartView: React.FC = () => {
       </div>
 
       <div className="mb-8">
-        <VirtualCartList items={state.cart} rowHeight={120} containerHeight={400} />
+        <VirtualCartList items={state.cart} rowHeight={160} containerHeight={450} />
       </div>
-
-      {/* <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8 space-y-6">
-        {state.cart.map(item => (
-          <div key={item.id} className="flex flex-col sm:flex-row gap-4 items-center bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
-            <img src={item.image} alt="" className="w-20 h-20 object-contain mix-blend-multiply dark:mix-blend-normal bg-white dark:bg-slate-800 rounded-lg p-2" />
-            <div className="flex-1 text-center sm:text-left">
-              <h4 className="text-base font-semibold text-slate-900 dark:text-slate-50">{item.title}</h4>
-              <p className="text-sm text-slate-500">${item.price.toFixed(2)} each</p>
-            </div>
-            <div className="flex flex-col items-center sm:items-end gap-3">
-              <span className="text-lg font-bold text-slate-900 dark:text-white">${(item.price * item.qty).toFixed(2)}</span>
-              <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg p-1">
-                <button onClick={() =>{ if(state.isCheckoutLocked){return;} dispatch({ type: 'UPDATE_CART_QTY', payload: { id: item.id, qty: item.qty - 1 } })}} className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200">-</button>
-                <span className="text-sm font-medium w-6 text-center text-slate-900 dark:text-white">{item.qty}</span>
-                <button onClick={() => {if(state.isCheckoutLocked){return;} dispatch({ type: 'UPDATE_CART_QTY', payload: { id: item.id, qty: item.qty + 1 } }); notify(`Added ${item.title} to cart`, 'success')}} className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200">+</button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div> */}
-
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col sm:flex-row justify-between items-center gap-6">
-        <div className="w-full sm:w-1/3 space-y-2">
-          <div className="flex justify-between text-slate-600 dark:text-slate-400"><span>Subtotal</span><span>${totals.subtotal.toFixed(2)}</span></div>
-          <div className="flex justify-between text-slate-600 dark:text-slate-400"><span>Tax (10%)</span><span>${totals.tax.toFixed(2)}</span></div>
-          <div className="flex justify-between text-xl font-bold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-700"><span>Total</span><span>${totals.total.toFixed(2)}</span></div>
+      <div className="bg-white dark:bg-neutral-900 rounded-sm shadow-sm border border-neutral-200 dark:border-neutral-800 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+        <div className="w-full sm:w-1/2 space-y-3">
+          <div className="flex justify-between text-sm text-neutral-600 dark:text-neutral-400"><span>Bag Total</span><span>${totals.subtotal.toFixed(2)}</span></div>
+          <div className="flex justify-between text-sm text-neutral-600 dark:text-slate-400"><span>Estimated Tax</span><span>${totals.tax.toFixed(2)}</span></div>
+          <div className="flex justify-between text-2xl font-serif font-bold text-neutral-900 dark:text-white pt-4 border-t border-neutral-200 dark:border-neutral-700"><span>Total</span><span>${totals.total.toFixed(2)}</span></div>
         </div>
-        <div className="w-full sm:w-auto flex flex-col gap-3">
-           <button disabled={isActionDisabled} onClick={() =>{  dispatch({ type: 'SIMULATE_TAMPERING' })}} className="text-xs text-slate-400 hover:text-red-500 underline text-right">Simulate Tampering</button>
-           <Button disabled={isActionDisabled} onClick={() => { dispatch({ type: 'SET_VIEW', payload: 'details' })}} variant="accent" className="w-full sm:w-64 py-3 text-lg shadow-lg shadow-orange-500/30">Proceed to Details</Button>
+        <div className="w-full sm:w-auto flex flex-col gap-4 w-full sm:min-w-[250px]">
+           <Button disabled={isActionDisabled} onClick={() => dispatch({ type: 'SET_VIEW', payload: 'details' })} className="w-full py-3.5 text-base tracking-widest uppercase">Proceed</Button>
+           <button disabled={isActionDisabled} onClick={() => { dispatch({ type: 'SIMULATE_TAMPERING' }); notify("Price tampered. Refresh to see Deep Security Validation catch it.", "warning") }} className="text-xs text-neutral-400 hover:text-red-600 underline text-center disabled:opacity-50 transition-colors">Developer: Simulate Tampering</button>
         </div>
       </div>
     </div>

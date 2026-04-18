@@ -1,4 +1,3 @@
-import './App.css'
 import { useReducer } from 'react';
 import { AppStateContext, AppDispatchContext, appReducer, initialState  } from './utilities/stateManager';
 import {Application} from './pages/index';

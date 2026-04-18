@@ -2,10 +2,11 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useAppStore } from '../hooks/useAppStore';
 import { Button } from '../components/buttons';
 import { Icons } from '../components/icons';
-import { generateCartChecksum, generateIdempotencyKey } from '../utilities/checksum';
-import { ORDER_STATES } from '../types/types';
+import { generateCartChecksum, generateIdempotencyKey } from '../utilities/securityGenerate';
+import { ORDER_STATES, type Product } from '../types/types';
 import { Logger } from '../utilities/Logger';
-
+import { FloatingInput } from '../components/FloatingInput';
+import { deterministicRandom } from '../utilities/numberGenerate';
 
 export const PaymentView: React.FC = () => {
   const { state, dispatch, notify } = useAppStore();
@@ -17,7 +18,7 @@ export const PaymentView: React.FC = () => {
   useEffect(() => {
     dispatch({ type: 'SET_SHARED_PAYMENT_ACTIVE', payload: true });
     
-    // Safety cleanup: If user closes this tab, lift the lock for other tabs
+    // If user closes this tab, lift the lock for other tabs
     const handleUnload = () => {
       const savedStr = localStorage.getItem('checkout_app_state');
       if (savedStr) {
@@ -57,8 +58,24 @@ export const PaymentView: React.FC = () => {
     setIsValidating(true);
     Logger.log('INFO', 'Payment initiated. Locking UI globally.');
 
-     // --- ARTIFICIAL DELAY FOR TAB LOCK VERIFICATION ---
+     // Stale Price Validation
     
+    let livePrices: Product[] = state.products; 
+    try {
+      const res = await fetch('https://fakestoreapi.com/products');
+      const data = await res.json() as Product[];
+      let massiveDataset: Product[] = [];
+      for (let i = 0; i < 25; i++) 
+        massiveDataset = [...massiveDataset, 
+                    ...data.map(p => ({ ...p, 
+                      id: `${p.id}_${i}`, 
+                      title: `${p.title} (Batch ${i+1})`,
+                    price: parseFloat((p.price + deterministicRandom(`${p.title} (Batch ${i+1})`)).toFixed(2)) }))];
+      livePrices = massiveDataset;
+      Logger.log('INFO', 'Fetched LIVE catalog prices for checkout verification.');
+    } catch (err) {
+      Logger.log('WARN', 'Failed to fetch live catalog. Falling back to in-memory state.');
+    }
     
     if (!state.checkoutToken) {
       notify("Session token expired. Please refresh the page.", "error");
@@ -66,24 +83,23 @@ export const PaymentView: React.FC = () => {
       setIsValidating(false);
       return;
     }
-    // 1. Validation (Checksum Tamper Check)
+    // Level 1: Checksum Tamper Check
     const currentHash = generateCartChecksum(state.cart);
 
-    // 2. Level 2 Deep Validation: Cross-verify with source-of-truth Catalog
-    // (This stops DevTools users who tampered price AND recalculated the hash manually)
-    let isTampered = false;
+    // Level 2 Deep Validation: Cross-verify with source-of-truth Catalog
+    let isTamperedOrStale = false;
     state.cart.forEach(item => {
-      const realProduct = state.products.find(p => p.id === item.id);
-      if (!realProduct || realProduct.price !== item.price) isTampered = true;
+      const realProduct = livePrices.find(p => p.id === item.id);
+      if (!realProduct || realProduct.price !== item.price) isTamperedOrStale = true;
     });
 
-    if (currentHash !== state.cartHash || isTampered) {
+    if (currentHash !== state.cartHash || isTamperedOrStale) {
       Logger.log('SEC_AUDIT', 'Tampering detected at final submission boundary.');
       notify("Security Alert: Cart tampering detected! Price mismatch.", "error");
       
       // Auto-trigger conflict resolution internally
       const correctedCart = state.cart.map(item => {
-         const real = state.products.find(p => p.id === item.id);
+         const real = livePrices.find(p => p.id === item.id);
          return { ...item, price: real ? real.price : item.price };
       }).filter(item => item.price > 0);
 
@@ -94,8 +110,6 @@ export const PaymentView: React.FC = () => {
       return; 
     }
 
-
-    // 2. Orchestration
     const idKey = generateIdempotencyKey();
     dispatch({ type: 'SET_IDEMPOTENCY_KEY', payload: idKey });
     dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.CHECKOUT_VALIDATED });
@@ -118,18 +132,7 @@ const simulateOrderSubmission = async (idempotencyKey:string) => {
       if (!response.ok) throw new Error("API Rejected");
 
       const data = await response.json();
-    // 3. API Simulation
-    // setTimeout(() => {
-    //   if (Math.random() < 0.1) {
-    //     dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_INCONSISTENT });
-    //     notify("Gateway connection lost. Please try again.", "error");
-    //   } else {
-    //     dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_SUCCESS });
-    //     dispatch({ type: 'SET_VIEW', payload: 'status' });
-    //     notify("Payment successful! Order placed.", "success");
-    //   }
-    //   dispatch({ type: 'LOCK_CHECKOUT', payload: false });
-    // }, 2000);
+
     if (Math.random() < 0.1) {
         dispatch({ type: 'TRANSITION_STATE', payload: ORDER_STATES.ORDER_INCONSISTENT });
         notify("Gateway connection lost. Please try again.", "error");
@@ -154,52 +157,56 @@ const simulateOrderSubmission = async (idempotencyKey:string) => {
 };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="flex items-center gap-4 mb-6">
+    <div className="max-w-3xl mx-auto px-4 py-8 animate-fade-in">
+      <div className="flex items-center gap-4 mb-8">
         <button onClick={() => dispatch({ type: 'SET_VIEW', payload: 'details' })} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-500 transition-colors"><Icons.ArrowLeft className="w-6 h-6"/></button>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Secure Payment</h2>
+        <h2 className="text-3xl font-serif font-bold text-neutral-900 dark:text-white">Secure Payment</h2>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="flex-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-          <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6">
-            <button onClick={() => setMethod('card')} className={`flex-1 py-3 text-center font-medium border-b-2 transition-colors ${method === 'card' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Credit/Debit Card</button>
-            <button onClick={() => setMethod('upi')} className={`flex-1 py-3 text-center font-medium border-b-2 transition-colors ${method === 'upi' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>UPI</button>
+      <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex-1 bg-white dark:bg-neutral-900 rounded-sm shadow-sm border border-neutral-200 dark:border-neutral-800 p-6 sm:p-8 border-t-4 border-t-rose-900">
+          <div className="flex border-b border-neutral-200 dark:border-neutral-800 mb-8">
+            <button onClick={() => setMethod('card')} className={`flex-1 py-4 text-center text-sm tracking-widest uppercase font-medium border-b-2 transition-colors ${method === 'card' ? 'border-neutral-900 text-neutral-900 dark:border-amber-500 dark:text-amber-500' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}>Credit Card</button>
+            <button onClick={() => setMethod('upi')} className={`flex-1 py-4 text-center text-sm tracking-widest uppercase font-medium border-b-2 transition-colors ${method === 'upi' ? 'border-neutral-900 text-neutral-900 dark:border-amber-500 dark:text-amber-500' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}>UPI</button>
           </div>
 
-          <fieldset disabled={state.isCheckoutLocked}>
+          <fieldset disabled={state.isCheckoutLocked} className="space-y-6">
             {method === 'card' ? (
-              <div className="space-y-4">
-                <input type="text" placeholder="Card Number (Dummy)" value={card.num} onChange={e => setCard({...card, num: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 text-slate-900 dark:text-white outline-none focus:border-blue-500" />
-                <div className="flex gap-4">
-                  <input type="text" placeholder="MM/YY" value={card.exp} onChange={e => setCard({...card, exp: e.target.value})} className="w-1/2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 text-slate-900 dark:text-white outline-none focus:border-blue-500" />
-                  <input type="password" placeholder="CVV" value={card.cvv} onChange={e => setCard({...card, cvv: e.target.value})} className="w-1/2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 text-slate-900 dark:text-white outline-none focus:border-blue-500" />
+              <>
+                <FloatingInput label="Card Number (Dummy)" id="pcard" value={card.num} onChange={e => setCard({...card, num: e.target.value})} />
+                <div className="flex gap-6">
+                  <FloatingInput label="MM/YY" id="pexp" value={card.exp} onChange={e => setCard({...card, exp: e.target.value})} />
+                  <FloatingInput label="CVV" id="pcvv" type="password" value={card.cvv} onChange={e => setCard({...card, cvv: e.target.value})} />
                 </div>
-              </div>
+              </>
             ) : (
-              <div className="space-y-4">
-                <input type="text" placeholder="Enter UPI ID (e.g., name@okbank)" value={upiId} onChange={e => setUpiId(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-3 text-slate-900 dark:text-white outline-none focus:border-blue-500" />
-                <p className="text-xs text-slate-500">A payment request will be sent to your UPI app.</p>
-              </div>
+              <>
+                <FloatingInput label="Enter UPI ID (e.g., user@bank)" id="pupi" value={upiId} onChange={e => setUpiId(e.target.value)} />
+                <p className="text-xs text-neutral-500 italic">A payment request will be sent to your UPI application.</p>
+              </>
             )}
           </fieldset>
         </div>
 
-        <div className="w-full md:w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 h-fit">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-4">Order Summary</h3>
-          <div className="flex justify-between items-center mb-6 text-xl font-bold text-slate-900 dark:text-white pb-4 border-b border-slate-200 dark:border-slate-700">
-            <span>Amount to Pay</span>
+        <div className="w-full md:w-[350px] bg-neutral-50 dark:bg-neutral-900 rounded-sm shadow-sm border border-neutral-200 dark:border-neutral-800 p-6 h-fit">
+          <h3 className="font-serif font-bold text-xl text-neutral-900 dark:text-white mb-6">Summary</h3>
+          <div className="space-y-3 mb-6 pb-6 border-b border-neutral-200 dark:border-neutral-800 text-sm text-neutral-600 dark:text-neutral-400">
+             <div className="flex justify-between"><span>Items</span><span>{state.cart.reduce((s,i)=>s+i.qty,0)}</span></div>
+             <div className="flex justify-between"><span>Shipping</span><span className="text-emerald-600">Free</span></div>
+          </div>
+          <div className="flex justify-between items-end mb-8 text-2xl font-serif font-bold text-neutral-900 dark:text-amber-500">
+            <span className="text-sm text-neutral-500 uppercase tracking-widest font-sans">Total</span>
             <span>${totals.total}</span>
           </div>
-          <Button onClick={handlePay} disabled={state.isCheckoutLocked} variant="accent" className="w-full py-4 text-lg shadow-lg shadow-orange-500/30">
+          <Button onClick={handlePay} disabled={state.isCheckoutLocked} className="w-full py-4 text-sm tracking-widest uppercase shadow-lg">
             {isValidating ? (
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Validating Security...
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Validating...
               </div>
             ) : state.isCheckoutLocked ? 'Processing...' : `Pay $${totals.total}`}
           </Button>
           {state.orderState === ORDER_STATES.ORDER_INCONSISTENT && (
-            <p className="text-red-500 text-sm mt-4 text-center">Payment failed. Please try again.</p>
+            <p className="text-rose-600 text-sm mt-4 text-center font-medium bg-rose-50 dark:bg-rose-900/20 p-2 rounded">Payment failed. Please retry.</p>
           )}
         </div>
       </div>

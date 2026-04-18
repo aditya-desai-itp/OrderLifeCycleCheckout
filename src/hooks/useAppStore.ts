@@ -12,7 +12,7 @@ export function useAppStore() {
     const notify = useCallback((message: string, type: NotificationType = 'info') => {
     const id = Date.now().toString();
     dispatch({ type: 'ADD_NOTIFICATION', payload: { id, message, type, timestamp: Date.now(), count: 1 } });
-    window.setTimeout(() => dispatch({ type: 'REMOVE_ACTIVE_NOTIFICATION', payload: id }), 5000);
+    window.setTimeout(() => dispatch({ type: 'REMOVE_ACTIVE_NOTIFICATION', payload: id }), 2000);
   }, [dispatch]);
 
   return { state, dispatch, notify };

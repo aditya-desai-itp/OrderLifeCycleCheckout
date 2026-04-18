@@ -12,17 +12,17 @@ export const CheckoutProgress: React.FC = () => {
   ];
 
   return (
-    <div className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 py-4 mb-6">
+    <div className="bg-white dark:bg-neutral-950 shadow-sm border-b border-neutral-200 dark:border-neutral-900 py-4 mb-6">
       <div className="max-w-4xl mx-auto px-4 flex justify-between items-center relative">
-        <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-200 dark:bg-slate-700 -z-10 transform -translate-y-1/2"></div>
+        <div className="absolute top-1/2 left-0 w-full h-1 bg-neutral-200 dark:bg-neutral-800 -z-10 transform -translate-y-1/2"></div>
         {steps.map((step, idx) => (
-          <div key={step.id} className="flex flex-col items-center bg-white dark:bg-slate-800 px-2 relative z-10">
+          <div key={step.id} className="flex flex-col items-center bg-white dark:bg-neutral-950 px-2 relative z-10">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-              step.isActive ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/50' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+              step.isActive ? 'bg-amber-600 text-white ring-4 ring-amber-50 dark:ring-amber-900/30' : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-500'
             }`}>
               {idx + 1}
             </div>
-            <span className={`text-xs mt-2 font-medium hidden sm:block ${step.isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{step.label}</span>
+            <span className={`text-xs mt-2 font-medium tracking-wider uppercase hidden sm:block ${step.isActive ? 'text-amber-600 dark:text-amber-500' : 'text-neutral-400 dark:text-neutral-600'}`}>{step.label}</span>
           </div>
         ))}
       </div>

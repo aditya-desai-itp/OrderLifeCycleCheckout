@@ -3,6 +3,8 @@ import { useAppStore } from '../hooks/useAppStore';
 import { useDebounce } from '../hooks/useDebounce';
 import type { SortOption } from '../types/types';   
 import { VirtualGrid } from '../components/virtGrid';
+import { Button } from '../components/buttons';
+import { Icons } from '../components/icons';
 
 export const CatalogView: React.FC = () => {
   const { state, dispatch} = useAppStore();
@@ -11,6 +13,8 @@ export const CatalogView: React.FC = () => {
   const debouncedSearch = useDebounce(localSearch, 300);
   const [visibleCount, setVisibleCount] = useState(12);
   const loaderRef = useRef<HTMLDivElement>(null);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // Sync search state
   useEffect(() => {
@@ -38,8 +42,6 @@ export const CatalogView: React.FC = () => {
     return result;
   }, [state.products, state.searchQuery, state.selectedCategories, state.sortOption]);
 
-  const currentProducts = useMemo(() => processedProducts.slice(0, visibleCount), [processedProducts, visibleCount]);
-
   // Intersection Observer for Infinite Scroll
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
@@ -58,14 +60,77 @@ export const CatalogView: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <input type="text" placeholder="Search products..." value={localSearch} onChange={(e) => setLocalSearch(e.target.value)}
-            className="w-full sm:w-64 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 border border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-lg px-4 py-2 outline-none transition-all" />
-          
-          <select value={state.sortOption} onChange={(e) => dispatch({ type: 'SET_UI_STATE', payload: { sortOption: e.target.value as SortOption }})}
-            className="w-full sm:w-auto bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 outline-none focus:border-blue-500">
+    <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-4 sm:py-8 animate-fade-in relative">
+      
+      {/* Sticky Mobile Action Bar (Hidden on Desktop) */}
+      <div className="flex md:hidden sticky top-[64px] z-30 bg-white dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 p-3 gap-3 shadow-sm">
+        <button onClick={() => setIsMobileSearchOpen(true)} className="flex-1 flex items-center justify-center gap-2 bg-neutral-100 dark:bg-neutral-800 py-2 rounded-sm text-sm font-medium text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
+          <Icons.Search /> Search
+        </button>
+        <button onClick={() => setIsMobileFilterOpen(true)} className="flex-1 flex items-center justify-center gap-2 bg-neutral-100 dark:bg-neutral-800 py-2 rounded-sm text-sm font-medium text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 relative">
+          <Icons.Filter /> Sort & Filter
+          {state.selectedCategories.length > 0 && <span className="absolute top-1 right-2 w-2 h-2 bg-rose-900 rounded-full"></span>}
+        </button>
+      </div>
+
+      {/* Mobile Search Top Overlay */}
+      {isMobileSearchOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/50 pointer-events-auto md:hidden">
+          <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-neutral-900 p-8 rounded-b-2xl flex flex-col animate-slide-down md:hidden shadow-md">
+            {/* <div className="bg-white dark:bg-neutral-900 p-6 rounded-b-2xl animate-slide-down h-1/4 flex flex-col"> */}
+            <div className="flex justify-between items-center mb-6">
+            <h2 className="font-serif text-xl font-bold">Search</h2>
+            <button onClick={() => setIsMobileSearchOpen(false)} aria-label="Close search"><Icons.Close className="w-6 h-6"/></button>
+          </div>
+          <input autoFocus type="text" placeholder="Search products..." value={localSearch} onChange={(e) => setLocalSearch(e.target.value)} className="w-full bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 border border-neutral-300 dark:border-neutral-700 focus:border-amber-500 rounded-md px-4 py-3 outline-none" />
+          <Button onClick={() => setIsMobileSearchOpen(false)} className="mt-6">View Results</Button>
+        </div>
+        </div>
+      )}
+
+      {/* Mobile Filter Bottom Slide-over */}
+      {isMobileFilterOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50 md:hidden">
+          <div className="bg-white dark:bg-neutral-900 p-6 rounded-t-2xl animate-slide-up h-3/4 flex flex-col">
+            <div className="flex justify-between items-center mb-6 border-b border-neutral-200 dark:border-neutral-800 pb-4">
+              <h2 className="font-serif text-xl font-bold">Sort & Filter</h2>
+              <button onClick={() => setIsMobileFilterOpen(false)} aria-label="Close filters"><Icons.Close className="w-6 h-6"/></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+              <h3 className="text-sm font-bold text-neutral-500 uppercase tracking-wider mb-3">Sort By</h3>
+              <select value={state.sortOption} onChange={(e) => dispatch({ type: 'SET_UI_STATE', payload: { sortOption: e.target.value as SortOption }})} className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md px-4 py-3 outline-none mb-6">
+                <option value="default">Recommended</option>
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+                <option value="name_asc">Name: A to Z</option>
+                <option value="name_desc">Name: Z to A</option>
+              </select>
+
+              <h3 className="text-sm font-bold text-neutral-500 uppercase tracking-wider mb-3">Categories</h3>
+              <div className="flex flex-col gap-2">
+                {categories.map(cat => (
+                  <label key={cat} className="flex items-center gap-3 p-2 rounded hover:bg-neutral-50 dark:hover:bg-neutral-800">
+                    <input type="checkbox" checked={state.selectedCategories.includes(cat)} onChange={() => toggleCategory(cat)} className="w-5 h-5 accent-amber-600 rounded border-neutral-300 focus:ring-amber-500" />
+                    <span className="capitalize text-neutral-800 dark:text-neutral-200">{cat}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
+            <div className="pt-4 flex gap-3">
+              <Button variant="outline" onClick={() => dispatch({ type: 'SET_UI_STATE', payload: { selectedCategories: [] }})} className="w-1/3">Clear</Button>
+              <Button onClick={() => setIsMobileFilterOpen(false)} className="flex-1">Apply Filters</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Standard Control Bar */}
+      <div className="hidden md:flex bg-white dark:bg-neutral-900 p-4 rounded-sm shadow-sm border border-neutral-200 dark:border-neutral-800 mb-6 flex-col gap-4 mx-4 sm:mx-0">
+        <div className="flex justify-between gap-4">
+          <input type="text" placeholder="Search essentials..." value={localSearch} onChange={(e) => setLocalSearch(e.target.value)} className="w-64 bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50 border border-neutral-200 dark:border-neutral-800 focus:border-amber-500 rounded-sm px-4 py-2 outline-none transition-all" />
+          <select aria-label="Sort options" value={state.sortOption} onChange={(e) => dispatch({ type: 'SET_UI_STATE', payload: { sortOption: e.target.value as SortOption }})} className="w-auto text-xs uppercase tracking-wide font-bold bg-neutral-50 dark:bg-neutral-950 text-neutral-500 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 rounded-sm px-4 py-2 outline-none focus:border-amber-500">
             <option value="default">Sort By: Recommended</option>
             <option value="price_asc">Price: Low to High</option>
             <option value="price_desc">Price: High to Low</option>
@@ -73,65 +138,21 @@ export const CatalogView: React.FC = () => {
             <option value="name_desc">Name: Z to A</option>
           </select>
         </div>
-        
         <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium mr-2">Filters:</span>
+          <span className="text-xs text-neutral-500 uppercase tracking-widest font-bold mr-2">Filters:</span>
           {categories.map(cat => (
-            <button key={cat} onClick={() => toggleCategory(cat)}
-              className={`px-3 py-1 rounded-full text-xs font-medium capitalize border transition-all ${
-                state.selectedCategories.includes(cat) ? 'bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
-              }`}>{cat}</button>
+            <button key={cat} onClick={() => toggleCategory(cat)} className={`px-4 py-1.5 rounded-sm text-xs font-medium capitalize border transition-all ${state.selectedCategories.includes(cat) ? 'bg-neutral-900 border-neutral-900 text-white dark:bg-amber-600 dark:border-amber-600' : 'bg-transparent border-neutral-300 text-neutral-600 hover:border-neutral-900 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-500'}`}>{cat}</button>
           ))}
-          {state.selectedCategories.length > 0 && <button onClick={() => dispatch({ type: 'SET_UI_STATE', payload: { selectedCategories: [] }})} className="text-xs text-blue-600 dark:text-blue-400 ml-2 font-medium">Clear All</button>}
+          {state.selectedCategories.length > 0 && <button onClick={() => dispatch({ type: 'SET_UI_STATE', payload: { selectedCategories: [] }})} className="text-xs text-rose-900 dark:text-rose-500 ml-2 font-bold uppercase tracking-wider hover:underline">Clear All</button>}
         </div>
       </div>
 
       {state.products.length === 0 ? (
-        <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>
-      ) : currentProducts.length === 0 ? (
-        <div className="text-center py-12 text-slate-500 dark:text-slate-400">No products match your search/filters.</div>
+        <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-neutral-900 dark:border-white"></div></div>
+      ) : processedProducts.length === 0 ? (
+        <div className="text-center py-16 text-neutral-500 dark:text-neutral-400 font-serif text-lg">No products match your curation.</div>
       ) : (
-        // <>
-        //   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-        //     {currentProducts.map(product => {
-        //       const cartItem = state.cart.find(i => i.id === product.id);
-        //       return (
-        //         <div key={product.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
-        //           <div className="h-48 bg-slate-50 dark:bg-slate-900 p-4 flex justify-center items-center">
-        //             <img src={product.image} alt={product.title} className="h-full object-contain mix-blend-multiply dark:mix-blend-normal" loading="lazy" />
-        //           </div>
-        //           <div className="p-4 flex flex-col flex-grow">
-        //             <h3 className="font-semibold text-slate-900 dark:text-slate-50 line-clamp-2 mb-1">{product.title}</h3>
-        //             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 capitalize">{product.category}</p>
-        //             <div className="mt-auto flex justify-between items-center">
-        //               <span className="text-lg font-bold text-blue-600 dark:text-blue-400">${product.price.toFixed(2)}</span>
-        //               {cartItem ? (
-        //                 <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
-        //                   <button disabled={state.isCheckoutLocked || state.isPaymentPageActive} onClick={() =>{if(state.isCheckoutLocked || state.isPaymentPageActive){return;} dispatch({ type: 'UPDATE_CART_QTY', payload: { id: product.id, qty: cartItem.qty - 1 } })}} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-600 rounded text-slate-700 dark:text-white shadow-sm hover:bg-slate-50 disabled:opacity-50">-</button>
-        //                   <span className="text-sm font-medium w-6 text-center text-slate-900 dark:text-white">{cartItem.qty}</span>
-        //                   <button disabled={state.isCheckoutLocked || state.isPaymentPageActive} onClick={() => {if(state.isCheckoutLocked || state.isPaymentPageActive){return;} dispatch({ type: 'UPDATE_CART_QTY', payload: { id: product.id, qty: cartItem.qty + 1 } }); notify(`Added ${product.title}`, 'success'); }} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-600 rounded text-slate-700 dark:text-white shadow-sm hover:bg-slate-50 disabled:opacity-50">+</button>
-        //                 </div>
-        //               ) : (
-        //                 <Button disabled={state.isCheckoutLocked || state.isPaymentPageActive} onClick={() => { if(state.isCheckoutLocked || state.isPaymentPageActive){return;} dispatch({ type: 'ADD_TO_CART', payload: product }); notify(`Added ${product.title}`, 'success'); }} variant="accent" className="py-1.5 px-4 text-sm">
-        //                   Add to Cart
-        //                 </Button>
-        //               )}
-        //             </div>
-        //           </div>
-        //         </div>
-        //       );
-        //     })}
-        //   </div>
-          
-          
-        //   {/* Intersection Observer Target for Lazy Loading */}
-        //   {visibleCount < processedProducts.length && (
-        //     <div ref={loaderRef} className="py-4 flex justify-center items-center">
-        //       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        //     </div>
-        //   )}
-        // </>
-        <VirtualGrid items={processedProducts} cardHeight={320} />
+        <VirtualGrid items={processedProducts} cardHeight={360} />
       )}
     </div>
   );

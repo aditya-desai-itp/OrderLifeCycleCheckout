@@ -1,7 +1,8 @@
-import { useEffect, useRef} from 'react';
+import { useEffect, useRef, Suspense} from 'react';
 import React from 'react';
 import { useAppStore } from '../hooks/useAppStore';
-import { deterministicRandom, generateCartChecksum } from '../utilities/checksum';
+import {generateCartChecksum } from '../utilities/securityGenerate';
+import { deterministicRandom } from '../utilities/numberGenerate';
 import type { AppState, Product } from '../types/types';
 import { CatalogView } from './catalogView';
 import { CartView } from './cartView';
@@ -79,7 +80,7 @@ export const Application: React.FC = () => {
     initApp();
   }, [dispatch, notify, state.isHydrated]);
 
-  // Persist Entire Global State (Excluding ephemeral flags)
+  // Persist Entire Global State
  useEffect(() => {
      if (!state.isHydrated || state.lastUpdateSource === 'sync') return;
     const stateToSave = {
@@ -90,19 +91,18 @@ export const Application: React.FC = () => {
       cartVersion: state.cartVersion,
       sortOption: state.sortOption,
       selectedCategories: state.selectedCategories,
-      // currentView: state.currentView,
+      currentView: state.currentView,
       isDarkMode: state.isDarkMode,
       isCheckoutLocked: state.isCheckoutLocked,
-      //isPaymentPageActive: state.isPaymentPageActive,
       sharedPaymentActive: state.sharedPaymentActive,
       notificationHistory: state.notificationHistory,
     };
     const stringified = JSON.stringify(stateToSave);
     if (localStorage.getItem('checkout_app_state') !== stringified) {
        localStorage.setItem('checkout_app_state', stringified);
-    }//state.currentView,
+    }
   }, [state.cart, state.cartHash, state.orderState, state.notificationHistory,  
-    state.cartVersion,state.sharedPaymentActive, state.checkoutDetails, 
+    state.cartVersion,state.sharedPaymentActive, state.checkoutDetails, state.currentView,
     state.isDarkMode,state.sortOption, state.selectedCategories, state.isHydrated, state.lastUpdateSource]);
 
   const versionRef = useRef(state.cartVersion);
@@ -113,11 +113,12 @@ export const Application: React.FC = () => {
     const handleStorage = (e: StorageEvent) => { 
       if (e.key === 'checkout_app_state' && e.newValue) { 
         const newState = JSON.parse(e.newValue);
+        if (newState.cartVersion < versionRef.current) return;
+        if (newState.cartVersion === versionRef.current && newState.sharedPaymentActive === state.sharedPaymentActive && newState.isDarkMode === state.isDarkMode && newState.orderState === state.orderState) return;
         if (newState.cartVersion > versionRef.current) {
            notify("Cart modified in another tab", "info");
         }
         dispatch({ type: 'SYNC_FROM_OTHER_TAB', payload: newState });
-        // dispatch({ type: 'HYDRATE_STATE', payload: newState });
         if (newState.isCheckoutLocked !== state.isCheckoutLocked) {
            dispatch({ type: 'LOCK_CHECKOUT', payload: newState.isCheckoutLocked });
         }
@@ -140,6 +141,7 @@ export const Application: React.FC = () => {
     }
   };
 
+  // Handle Cart Click based on current state lifecycle
   const handleCartClick = () => {
     if(isActionDisabled){
       return;
@@ -157,7 +159,6 @@ export const Application: React.FC = () => {
   const copyDiagnostics = () => {
     const logs = Logger.exportLogs();
     
-    // IFrame Safe Clipboard Copy
     const textArea = document.createElement("textarea");
     textArea.value = logs;
     document.body.appendChild(textArea);
@@ -172,80 +173,66 @@ export const Application: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen ${state.isDarkMode ? 'dark bg-slate-900' : 'bg-slate-50'} transition-colors duration-300 font-sans flex flex-col`}>
-      
-      {/* GLOBAL OVERLAYS */}
-      {state.cartConflict && (<ConflictOverlay/>)}
-      {/* NOTIFICATION TOASTS*/}
-      <NotificationCenter/>
-      {/* NOTIFICATION TOASTS
-      <div aria-live="polite" className="fixed bottom-4 right-4 z-[90] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
-        {state.activeNotifications.map(note => (
-          <div key={note.id} className={`pointer-events-auto flex items-center justify-between p-4 rounded-lg shadow-lg text-white ${note.type === 'success' ? 'bg-green-600' : note.type === 'error' ? 'bg-red-600' : note.type === 'warning' ? 'bg-orange-500' : 'bg-blue-600'}`}>
-            <div className="flex gap-3"><p className="text-sm font-medium">{note.message}</p></div>
-            <button onClick={() => dispatch({ type: 'REMOVE_ACTIVE_NOTIFICATION', payload: note.id })} className="text-white/80 hover:text-white">×</button>
-          </div>
-        ))}
-      </div> */}
-      <NotificationPanel/>
-      {/* NOTIFICATION SIDEBAR*/}
-      {/*state.isNotificationPanelOpen && <div className="fixed inset-0 bg-slate-900/30 z-[80]" onClick={() => dispatch({ type: 'TOGGLE_NOTIFICATION_PANEL', payload: false })} />}
-      <div className={`fixed top-0 right-0 h-full w-full sm:w-96 bg-white dark:bg-slate-800 shadow-2xl z-[85] transform transition-transform duration-300 ${state.isNotificationPanelOpen ? 'translate-x-0' : 'translate-x-full'} flex flex-col`}>
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between">
-          <h2 className="font-bold text-slate-900 dark:text-white">Notifications</h2>
-          <button onClick={() => dispatch({ type: 'TOGGLE_NOTIFICATION_PANEL', payload: false })} className="text-slate-500 hover:text-slate-900 dark:hover:text-white"><Icons.Close className="w-5 h-5"/></button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {state.notificationHistory.map((note, idx) => (
-             <div key={idx} className="p-3 border rounded text-sm text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-               {note.count > 1 && <span className="font-bold bg-slate-200 dark:bg-slate-700 px-1.5 rounded mr-2">{note.count}x</span>}
-               {note.message} <span className="text-xs text-slate-500 block mt-1">{new Date(note.timestamp).toLocaleTimeString()}</span>
-             </div>
-          ))}
-        </div>
-        <Button variant="outline" className="m-4" onClick={() => dispatch({ type: 'CLEAR_NOTIFICATION_HISTORY' })}>Clear</Button>
-      </div> */}
-      
+    <div className={`min-h-screen ${state.isDarkMode ? 'dark bg-neutral-950 text-neutral-100' : 'bg-neutral-50 text-neutral-900'} transition-colors duration-300 font-sans flex flex-col`}>  
+       {/* Global Scrollbar Styling */}
+       <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d97706; } /* Amber hover in dark mode */
+      `}} />
 
-      {/* MAIN NAVBAR */}
-      <header className="sticky top-0 z-50 w-full bg-blue-900 dark:bg-slate-950 border-b border-blue-800 dark:border-slate-800 shadow-sm text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={handleLogoClick}>
-            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-xl">S</div>
-            <h1 className="text-xl font-bold hidden sm:block">SecureShop</h1>
+      {state.cartConflict && (<ConflictOverlay/>)}
+
+      {/* Notification Toasts */}
+      <NotificationCenter/>
+
+      {/* Notification Side Bar */}
+      <NotificationPanel/>
+
+      {/* Main Navbar */}
+      <header className="sticky top-0 z-50 w-full bg-neutral-950 border-b border-neutral-900 shadow-sm text-neutral-50 h-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={handleLogoClick}>
+            <h1 className="text-2xl font-serif font-bold tracking-wide group-hover:text-amber-500 transition-colors">Secure<span className="font-sans font-light opacity-50 ml-1">SHOP</span></h1>
           </div>
-          <div className="flex items-center gap-4">
-            <button onClick={() => dispatch({ type: 'TOGGLE_DARK_MODE' })} className="p-2 text-blue-100 hover:bg-blue-800 dark:hover:bg-slate-800 rounded-full">
-              {state.isDarkMode ? <Icons.Sun className="w-5 h-5"/> : <Icons.Moon className="w-5 h-5"/>}
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button onClick={() => dispatch({ type: 'TOGGLE_DARK_MODE' })} aria-label="Toggle theme" className="p-2 text-neutral-400 hover:text-amber-500 transition-colors">
+              {state.isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
             </button>
-            <button onClick={() => dispatch({ type: 'TOGGLE_NOTIFICATION_PANEL', payload: true })} className="relative p-2 text-blue-100 hover:bg-blue-800 dark:hover:bg-slate-800 rounded-full">
-              <Icons.Bell className="w-5 h-5"/>
-              {state.activeNotifications.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-orange-500 rounded-full"></span>}
+            <button onClick={() => dispatch({ type: 'TOGGLE_NOTIFICATION_PANEL', payload: true })} aria-label="View notifications" className="relative p-2 text-neutral-400 hover:text-amber-500 transition-colors">
+              <Icons.Bell />
+              {state.activeNotifications.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-rose-600 rounded-full border border-neutral-950"></span>}
             </button>
-            <div className="relative p-2 cursor-pointer hover:bg-blue-800 dark:hover:bg-slate-800 rounded-full transition-colors" onClick={() => { handleCartClick() }}>
-              <Icons.Cart className="w-6 h-6"/>
-              {state.cart.length > 0 && <span className="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">{state.cart.reduce((sum, item) => sum + item.qty, 0)}</span>}
+            <div className={`relative p-2 cursor-pointer text-neutral-400 hover:text-amber-500 transition-colors ${state.isCheckoutLocked || state.sharedPaymentActive ? 'opacity-50 pointer-events-none' : ''}`} onClick={() => { handleCartClick() }} aria-label="View Cart">
+              <Icons.Cart />
+              {state.cart.length > 0 && <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-neutral-950">{state.cart.reduce((sum, item) => sum + item.qty, 0)}</span>}
             </div>
           </div>
         </div>
       </header>
 
-      {/* DYNAMIC PROGRESS BAR */}
+      {/* Dynamic Progress Bar */}
       <CheckoutProgress />
 
-      {/* DYNAMIC VIEW ROUTER */}
+      {/* Dynamic View Router */}
       <div className="flex-grow">
-        {state.currentView === 'catalog' && <LazyCatalog />}
+        <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-neutral-900 dark:border-white"></div></div>}>
+          {state.currentView === 'catalog' && <LazyCatalog />}
         {state.currentView === 'cart' && <LazyCart />}
         {state.currentView === 'details' && <LazyDetails />}
         {state.currentView === 'payment' && <LazyPayment />}
         {state.currentView === 'status' && <LazyStatus />}
+        </Suspense>
       </div>
-
-      <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 py-4 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 flex justify-between items-center text-xs text-slate-500">
-          <p>&copy; 2026 SecureShop. All rights reserved.</p>
-          <button onClick={copyDiagnostics} className="hover:text-blue-600 transition-colors flex items-center gap-1">📋 Copy Diagnostics</button>
+      
+      {/* Footer with Diagnostics Copy */}
+      <footer className="bg-white dark:bg-neutral-950 border-t border-neutral-200 dark:border-neutral-900 py-6 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center text-xs text-neutral-500 gap-4">
+          <p>&copy; 2026 SecureShop Commerce. All rights reserved.</p>
+          <button onClick={copyDiagnostics} className="hover:text-amber-600 transition-colors flex items-center gap-1 uppercase tracking-widest font-medium">📋 Copy Developer Logs</button>
         </div>
       </footer>
     </div>

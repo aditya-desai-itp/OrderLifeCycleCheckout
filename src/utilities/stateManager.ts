@@ -1,6 +1,6 @@
 import { createContext } from 'react';
 import { ORDER_STATES, VALID_TRANSITIONS, type Action, type AppState, type CartItem } from '../types/types';
-import { generateCartChecksum, generateSecureToken } from './checksum';
+import { generateCartChecksum, generateSecureToken } from './securityGenerate';
 import { Logger } from './Logger';
 export const AppStateContext = createContext<AppState|undefined>(undefined);
 export const AppDispatchContext = createContext<React.Dispatch<Action>|undefined>(undefined);
@@ -22,7 +22,6 @@ export const initialState: AppState = {
   notificationHistory: [], 
   isNotificationPanelOpen: false,
   lastUpdateSource: 'local',
-  // isPaymentPageActive: false,
   idempotencyKey: null, 
   checkoutToken: null,
   isCheckoutLocked: false, 
@@ -42,7 +41,7 @@ export const appReducer = (state : AppState, action: Action) : AppState => {
         return { ...state, ...action.payload };
     case 'SET_VIEW': {
       Logger.log('INFO', `Mapped to view: ${action.payload}`);
-      return { ...state, currentView: action.payload }; //sharedPaymentActive: false,
+      return { ...state, currentView: action.payload };
     };
     case 'SET_SHARED_PAYMENT_ACTIVE':
       return { ...state, sharedPaymentActive: action.payload, lastUpdateSource: 'local' };
@@ -71,7 +70,6 @@ export const appReducer = (state : AppState, action: Action) : AppState => {
     case 'UPDATE_CART_QTY': {
       
       const newCart = state.cart.map(item => item.id === action.payload.id ? { ...item, qty: action.payload.qty } : item).filter(item => item.qty > 0);
-      // If cart empties during checkout, send back to catalog
       const newView = (newCart.length === 0 && state.currentView !== 'catalog') ? 'catalog' : state.currentView;
       return { 
         ...state, 
@@ -140,11 +138,11 @@ export const appReducer = (state : AppState, action: Action) : AppState => {
       let newActive = [...state.activeNotifications];
       let newHistory = [...state.notificationHistory];
 
-      // Smart Counting: If identical notification exists, increment counter instead of spamming UI
+      // If identical notification exists, increment counter instead of spamming UI
       if (activeIdx > -1) {
         newActive[activeIdx] = { ...newActive[activeIdx], count: newActive[activeIdx].count + 1, timestamp: Date.now() };
         
-        // Bring to top of history as well
+        // Bring notif to top of history
         const histIdx = newHistory.findIndex(n => n.message === message && n.type === type);
         if (histIdx > -1) {
            newHistory[histIdx] = { ...newHistory[histIdx], count: newHistory[histIdx].count + 1, timestamp: Date.now() };
@@ -162,10 +160,10 @@ export const appReducer = (state : AppState, action: Action) : AppState => {
     case 'CLEAR_NOTIFICATION_HISTORY': return { ...state, notificationHistory: [] };
     
     case 'SIMULATE_TAMPERING': {
-      // Modifies price WITHOUT updating the hash (simulates devtools manipulation)
+      // Modifies price without updating the hash (simulates devtools manipulation)
       if (state.cart.length === 0) return state;
       const tamperedCart = [...state.cart];
-      tamperedCart[0] = { ...tamperedCart[0], price: 0.01 }; // Hacker changed price to 1 cent!
+      tamperedCart[0] = { ...tamperedCart[0], price: 0.01 };
       Logger.log('WARN', 'Simulated DevTools array tampering executed (Hash bypassed).');
       return { ...state, cart: tamperedCart, cartVersion: state.cartVersion + 1, lastUpdateSource: 'local' };
     }
@@ -187,16 +185,14 @@ export const appReducer = (state : AppState, action: Action) : AppState => {
         checkoutToken: null,
         cartVersion: state.cartVersion + 1,
         lastUpdateSource: 'local'
-        // isPaymentPageActive: false
       };
     };
 
     case 'SYNC_FROM_OTHER_TAB': {
       const inc = action.payload;
-      // FIX: Strict deduplication & version gating to prevent flicker updates
       if (inc.cartVersion as number < state.cartVersion) return state; 
       if (inc.cartVersion === state.cartVersion && inc.sharedPaymentActive === state.sharedPaymentActive && inc.isDarkMode === state.isDarkMode && inc.orderState === state.orderState) {
-        return state; // Nothing actually changed, abort render cycle!
+        return state; 
       }
       
       return {
@@ -207,7 +203,7 @@ export const appReducer = (state : AppState, action: Action) : AppState => {
         orderState: inc.orderState || state.orderState,
         isDarkMode: inc.isDarkMode ?? state.isDarkMode,
         sharedPaymentActive: inc.sharedPaymentActive ?? state.sharedPaymentActive,
-        lastUpdateSource: 'sync' // Crucial flag to prevent echo writing
+        lastUpdateSource: 'sync' 
       };
     }
 

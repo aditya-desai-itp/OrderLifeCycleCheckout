@@ -2,10 +2,10 @@ export const ORDER_STATES = {
   CART_READY: 'CART_READY',
   CHECKOUT_VALIDATED: 'CHECKOUT_VALIDATED',
   ORDER_SUBMITTED: 'ORDER_SUBMITTED',
-  ORDER_SUCCESS: 'ORDER_SUCCESS',        // Payment success
-  ORDER_SHIPPED: 'ORDER_SHIPPED',        // Transit simulation
-  ORDER_IN_TRANSIT: 'ORDER_IN_TRANSIT',  // Transit simulation
-  ORDER_DELIVERED: 'ORDER_DELIVERED',    // Transit simulation
+  ORDER_SUCCESS: 'ORDER_SUCCESS',        
+  ORDER_SHIPPED: 'ORDER_SHIPPED',        
+  ORDER_IN_TRANSIT: 'ORDER_IN_TRANSIT',  
+  ORDER_DELIVERED: 'ORDER_DELIVERED',   
   ORDER_FAILED: 'ORDER_FAILED',
   ORDER_INCONSISTENT: 'ORDER_INCONSISTENT',
   ROLLED_BACK: 'ROLLED_BACK'
@@ -13,7 +13,7 @@ export const ORDER_STATES = {
 
 export const VALID_TRANSITIONS: Record<OrderState, OrderState[]> = {
   [ORDER_STATES.CART_READY]: [ORDER_STATES.CHECKOUT_VALIDATED],
-  [ORDER_STATES.CHECKOUT_VALIDATED]: [ORDER_STATES.ORDER_SUBMITTED, ORDER_STATES.CART_READY],
+  [ORDER_STATES.CHECKOUT_VALIDATED]: [ORDER_STATES.ORDER_SUBMITTED, ORDER_STATES.CART_READY, ORDER_STATES.ORDER_INCONSISTENT],
   [ORDER_STATES.ORDER_SUBMITTED]: [ORDER_STATES.ORDER_SUCCESS, ORDER_STATES.ORDER_FAILED, ORDER_STATES.ORDER_INCONSISTENT],
   [ORDER_STATES.ORDER_SUCCESS]: [ORDER_STATES.ORDER_SHIPPED, ORDER_STATES.CART_READY, ORDER_STATES.ORDER_IN_TRANSIT, ORDER_STATES.ORDER_DELIVERED],
   [ORDER_STATES.ORDER_SHIPPED]: [ORDER_STATES.ORDER_IN_TRANSIT, ORDER_STATES.CART_READY],
@@ -67,18 +67,15 @@ export interface AppState {
   orderState: OrderState;
   sharedPaymentActive: boolean;
   lastUpdateSource: 'local' | 'sync';
-  
-  // Navigation & Form Data
   currentView: ViewState;
   checkoutDetails: CheckoutDetails;
-  // UI & Filters (Fully hydrated now)
+
+  // UI & Filters
   searchQuery: string;
   selectedCategories: string[];
   sortOption: SortOption;
   isDarkMode: boolean;
-  // isPaymentPageActive: boolean;
-  
-  // System
+
   activeNotifications: NotificationMsg[];
   notificationHistory: NotificationMsg[];
   isNotificationPanelOpen: boolean;
