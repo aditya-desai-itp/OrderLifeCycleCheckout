@@ -4,7 +4,7 @@ import { Button } from '../components/buttons';
 import { Icons } from '../components/icons';
 import { generateCartChecksum, generateIdempotencyKey } from '../utilities/securityGenerate';
 import { ORDER_STATES, type Product } from '../types/types';
-import { Logger } from '../utilities/Logger';
+import { Logger } from '../utilities/logger';
 import { FloatingInput } from '../components/FloatingInput';
 import { deterministicRandom } from '../utilities/numberGenerate';
 

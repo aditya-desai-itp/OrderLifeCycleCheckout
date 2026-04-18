@@ -1,7 +1,7 @@
 import { createContext } from 'react';
 import { ORDER_STATES, VALID_TRANSITIONS, type Action, type AppState, type CartItem } from '../types/types';
 import { generateCartChecksum, generateSecureToken } from './securityGenerate';
-import { Logger } from './Logger';
+import { Logger } from './logger';
 export const AppStateContext = createContext<AppState|undefined>(undefined);
 export const AppDispatchContext = createContext<React.Dispatch<Action>|undefined>(undefined);
 

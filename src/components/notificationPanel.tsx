@@ -51,7 +51,7 @@ export const NotificationPanel: React.FC = () => {
             ) : (
               filteredHistory.map((note, idx) => (
                 <div key={`${note.id}-${idx}`} className={`p-4 border border-l-4 rounded-sm text-sm text-neutral-800 dark:text-neutral-200 border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 
-                  ${note.type === 'success' ? 'border-l-emerald-500' : note.type === 'error' ? 'border-l-rose-500' : note.type === 'warning' ? 'border-l-amber-500' : 'border-l-neutral-500'}`}>
+                  ${note.type === 'success' ? 'border-l-emerald-500 dark:border-l-emerald-500' : note.type === 'error' ? 'border-l-rose-500 dark:border-l-rose-500' : note.type === 'warning' ? 'border-l-amber-500 dark:border-l-amber-500' : 'border-l-neutral-500 dark:border-l-neutral-500'}`}>
                   {note.count > 1 && <span className="font-bold bg-neutral-200 dark:bg-neutral-800 px-2 py-0.5 rounded-sm mr-2 text-xs">{note.count}x</span>}
                   {note.message} <span className="text-xs text-neutral-500 block mt-2 uppercase tracking-widest">{new Date(note.timestamp).toLocaleTimeString()}</span>
                 </div>

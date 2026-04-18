@@ -12,7 +12,7 @@ import { OrderStatusView } from './orderStatusView';
 import { CheckoutProgress } from '../components/progressBar';
 import { Icons } from '../components/icons';
 import { ORDER_STATES } from '../types/types';
-import { Logger } from '../utilities/Logger';
+import { Logger } from '../utilities/logger';
 import { NotificationCenter } from '../components/notifications';
 import { NotificationPanel } from '../components/notificationPanel';
 import { ConflictOverlay } from '../components/conflictOverlay';
